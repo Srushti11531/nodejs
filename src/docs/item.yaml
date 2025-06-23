@@ -1,0 +1,327 @@
+openapi: 3.0.0
+info:
+  title: User API
+  version: 1.0.0
+  description: API for managing users
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/users:
+    get:
+      summary: Fetch all users
+      tags:
+        - Users
+      responses:
+        '200':
+          description: A list of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      example: 26
+                    name:
+                      type: string
+                      example: shree
+                    email:
+                      type: string
+                      example: shree@gmail.com
+                    gender:
+                      type: string
+                      enum: [Male, Female, Other]
+                      example: Female
+
+  /api/users/add:
+    post:
+      summary: Add new users
+      tags:
+        - Users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - email
+                - password
+                - gender
+              properties:
+                username:
+                  type: string
+                  default: shree 
+                email:
+                  type: string
+                  default: shree@mail.com
+                password:
+                  type: string
+                  default: shree
+                gender:
+                  type: string
+                  enum: [Male, Female, Other]
+                  default: Female
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 26
+                  name:
+                    type: string
+                    example: shree
+                  email:
+                    type: string
+                    example: shree@mail.com
+                  gender:
+                    type: string
+                    example: Female
+
+  /api/users/{id}:
+    put:
+      summary: Modify a user
+      tags:
+        - Users
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the user to update
+          schema:
+            type: integer
+            example: 26
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  default: shree
+                email:
+                  type: string
+                  default: shree@gmail.com
+      responses:
+        '200':
+          description: Modified
+        '400':
+          description: Bad Request
+        '404':
+          description: Not Found
+        '500':
+          description: Server Error
+
+  /api/users/delete/{id}:
+    delete:
+      summary: Delete user by ID
+      tags:
+        - Users
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The unique ID of the user
+          schema:
+            type: integer
+            example: 32
+      responses:
+        '200':
+          description: Modified
+        '400':
+          description: Bad Request
+        '404':
+          description: Not Found
+        '500':
+          description: Server Error
+
+  /api/pdf/upload:
+    post:
+      summary: Upload a PDF file and parse its contents
+      tags:
+        - PDF
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: PDF file to upload
+      responses:
+        '200':
+          description: PDF parsed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  users:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: 26
+                        name:
+                          type: shree
+                        email:
+                          type: shree
+                        gender:
+                          type: FEMALE
+                        createdAt:
+                          type: 2025-06-10 15:44:42.659+05:30
+                          format: date
+                        updatedAt:
+                          type: 2025-06-13 15:01:12.217+05:30
+                          format: date
+                        menuIds:
+                          type: 4,3
+                         
+        '400':
+          description: No file uploaded
+        '500':
+          description: Internal server error
+  /api/excel/upload:
+    post:
+      summary: Upload an Excel file and parse its contents
+      tags:
+        - Excel
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Excel file to upload
+      responses:
+        '200':
+          description: Excel parsed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Excel parsed successfully
+                  users:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        email:
+                          type: string
+                        gender:
+                          type: string
+                        createdAt:
+                          type: string
+                          format: date
+                        updatedAt:
+                          type: string
+                          format: date
+                        menuIds:
+                          type: array
+                          items:
+                            type: string
+        '400':
+          description: No file uploaded
+        '500':
+          description: Internal server error
+
+  /api/excel/download:
+    get:
+      summary: Download all user data as an Excel file
+      tags:
+        - Excel
+      responses:
+        '200':
+          description: Excel file generated successfully
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        '500':
+          description: Failed to generate Excel
+  /api/excel/write:
+    post:
+      summary: Upload an Excel file and parse its contents
+      tags:
+        - Excel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              description: Array of user objects to write into Excel
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 26
+                  name:
+                    type: string
+                    example: shree
+                  email:
+                    type: string
+                    example: shree@example.com
+                  gender:
+                    type: string
+                    enum: [Male, Female, Other]
+                    example: female
+                  createdAt:
+                    type: string
+                    format: date
+                    example: 2025-06-10
+                  updatedAt:
+                    type: string
+                    format: date
+                    example: 2025-06-10
+                  menuIds:
+                    type: array
+                    items:
+                      type: string
+                    example: [ "4", "3"]
+      responses:
+        '200':
+          description: Excel file created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Excel written successfully
+        '400':
+          description: Bad Request
+        '500':
+          description: Failed to write Excel
