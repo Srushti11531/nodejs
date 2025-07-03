@@ -20,8 +20,13 @@ const userRepo = require('../Repository/userRepository');
 const passwordUtils = require('../utils/password');
 const bcrypt = require('bcrypt');
 const Users = require('../models/user');
+const  {sendToMailQueue}  = require('../Service/mailservice');
 const jwt = require('jsonwebtoken');
-
+const  getTemplate  = require('../utils/mailtemplate');
+const { enqueueEmailJob } = require('../query/mailquery');
+const { sendWelcomeEmail } = require('./mailservice');
+const { error } = require('../utils/response');
+const { BadRequestException } = require('../utils/error');
 
 
 const upsertUser = async (req) => {
@@ -31,27 +36,17 @@ const upsertUser = async (req) => {
 const create = async (data) => {
   return await userRepo.createUser(data);
 };
-const { sendWelcomeEmail } = require('./mailservice');
+const createUser = async (req) => {
+  const { name, email } = req;
+  //console.log(req)
 
-const createUser = async (data) => {
-  try {
-
-    if (data.password) {
-      data.password = await bcrypt.hash(data.password, 10);
-    }
-
-
-    const user = await create(data);
-
-
-    await sendWelcomeEmail(user.email, user.username || user.name);
-
-    return user;
-  } catch (error) {
-    console.error('Error creating user:', error);
-    throw error;
+  if (!name || !email) {
+    return res.status(400).json({ message: "All fields are required." });
   }
+  const user = await Users.create(req);
+  return user;
 };
+
 
 const getUserById = async (id) => {
   return await userRepo.getUserById(id);
@@ -83,6 +78,9 @@ const bulkUpdateUsers = async (id, data) => {
 };
 const deleteUser = async (id) => {
   return await userRepo.softDeleteUser(id);
+};
+const findUserByEmail = async (email) => {
+  return await Users.findOne({ where: { email } });
 };
 
 const getUsersByEmailStart = async ({ email }) => {
@@ -176,21 +174,63 @@ const User = async () => {
     res.status(500).json({ error: error.message });
   }
 };
+const queueEmailsForAllUsers = async () => {
+  const users = await userRepo.fetchAllUsers();
 
+  if (!users || users.length === 0) {
+    return [];
+  }
+
+  for (const user of users) {
+    const emailPayload = {
+      to: user.email,
+      name: user.name,
+      subject: 'Hello from Our App!',
+      html: getTemplate(user.name),
+    };
+
+    console.log('Queueing email payload:', emailPayload);
+
+    await sendToMailQueue(emailPayload);
+  }
+
+  return users.map(({ email, name }) => ({ email, name }));
+};
+const scheduleEmailsForUsers = async () => {
+  const users = await userRepo.fetchAllUsers();
+
+  if (!users || !users.length) return [];
+
+  for (const user of users) {
+    const emailPayload = {
+      to: user.email,
+      name: user.name,
+      subject: 'Scheduled Hello from Our App!',
+      html: getTemplate(user.name),
+    };
+
+    await enqueueEmailJob(emailPayload); // Add job to queue
+  }
+
+  return users.map(({ email, name }) => ({ email, name }));
+};
 
 
 module.exports = {
   upsertUser,
   createUser,
   getUserById,
-  updateUser,
-  bulkUpdateUsers,
-  deleteUser,
-  fetchAllUsers,
-  getUsersByEmailStart,
   filterUsersByEmailIn,
   getUsersWithMenus,
   getmenu,
   User,
   login,
+  fetchAllUsers,
+  updateUser,
+  bulkUpdateUsers,
+  getUsersByEmailStart,
+  deleteUser,
+  findUserByEmail,
+  queueEmailsForAllUsers,
+  scheduleEmailsForUsers,
 };

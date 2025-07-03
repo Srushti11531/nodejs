@@ -4,9 +4,18 @@ const userController = require('../controllers/UserController');
 const { fetchAllUsers } = require('../controllers/UserController');
 const User=require('../models/user');
 const authenticateToken = require('../middleware/authMiddleware');
+const { registerUser } = require('../controllers/UserController');
+const { sendMultipleEmails } = require('../controllers/UserController');
 
 
-router.post('/search-email', userController.getUsersByEmailLetter);
+// Create a new user
+router.post('/register', userController.createUser);
+router.post('/send-emails', sendMultipleEmails);
+router.post('/schedule', userController.scheduleEmails);
+
+
+
+router.post('/send-emails', userController.sendMultipleEmails);
 router.get('/users-menus', authenticateToken,userController.getUsersWithMenus);
 router.post('/upsert', userController.upsertUser);
 
@@ -44,6 +53,7 @@ router.get('/:id', userController.getUserById);
 
 
  router.post('/bulk-menu/update',userController.bulkUpdateUsers);
+
  //show email
 
 //swagger

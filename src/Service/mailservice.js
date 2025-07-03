@@ -1,25 +1,48 @@
-const nodemailer = require('nodemailer');
+// const nodemailer = require('nodemailer');
+// //const { getEnv } = require('../utils/EmailService');
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: 'srushtikapadiya4@gmail.com',
-    pass: 'gacd sdbw opyv mbbk', // App password from Google
-  },
-});
+const sendMail = async ({ to, name, subject, html }) => {
+  const emailUser = getEnv('SMTP_USER'); 
+  const mailSubject = subject || 'No Subject'; 
 
-async function sendWelcomeEmail(to, username) {
-  const html = `
-    <h1>Welcome to Our App, ${username}!</h1>
-    <p>We're excited to have you onboard. Let us know if you need help.</p>
-  `;
-
-  return await transporter.sendMail({
-    from: '"Your App" srushtikapadiya4@gmail.com',
-    to:"srushtikapadiya4@gmaol.com",
-    subject: 'Welcome to Our App!',
-    html,
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: emailUser,
+      pass: getEnv('SMTP_PASS')
+    }
   });
-}
 
-module.exports = { sendWelcomeEmail };
+   //const finalHtml = html || `<h1>Hello ${name || 'User'},</h1><p>Welcome to our platform!</p>`;
+
+  await transporter.sendMail({
+    from: `"TechRover Team" <${emailUser}>`,
+    to,
+    subject: mailSubject,
+    html: finalHtml
+  });
+};
+
+// module.exports = { sendMail };
+const amqp = require('amqplib');
+const { startMailWorker } = require('./mailworkers');
+
+let channel;
+
+const getChannel = async () => {
+  if (!channel) {
+    const connection = await amqp.connect('amqp://localhost');
+    channel = await connection.createChannel();
+  }
+  return channel;
+};
+
+const sendToMailQueue = async (payload) => {
+  const channel = await getChannel();
+  const queue = 'email_queue';
+  await channel.assertQueue(queue, { durable: true });
+  channel.sendToQueue(queue, Buffer.from(JSON.stringify(payload)), { persistent: true });
+ startMailWorker()
+};
+
+module.exports = { sendToMailQueue, sendMail };

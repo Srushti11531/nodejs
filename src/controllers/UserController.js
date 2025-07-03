@@ -213,26 +213,31 @@
 
 
 // controllers/userController.js
+
 const userService = require('../Service/userService');
 const Response=require('../utils/response')
 const AppError = require('../utils/error');
+const  {sendToMailQueue}  = require('../Service/mailservice');
+const  getTemplate  = require('../utils/mailtemplate');
+const { sendToQueue } = require('../Service/queryservice');
+const validator = require('validator'); // For email validation
+
+
 
 
 const createUser = async (req, res) => {
   try {
+    
+
     const user = await userService.createUser(req.body);
+
     Response.getGeneralResponse(res, user, "Users added successfully")
-    // res.status(201).json(user);
-    //     throw new AppError('User creation failed', 400, 'USER_CREATED');
-
   } catch (error) {
-    // res.status(400).json({ error: error.message });
-    //     next(error);
-    console.log(error);
-    Response.error(res,"Fail")
-
+    console.error(error);
+    Response.error(res, "Failed to fetch user", 500);
   }
 };
+
 
 const getUserById = async (req, res) => {
   try {
@@ -402,9 +407,60 @@ const fetchAllUsers = async (req, res) => {
   }
 };
 
+const registerUser = async (req, res) => {
+  const { name, email } = req.body;
 
+  // Simulate DB save
+  console.log(`📝 User created: ${name} - ${email}`);
 
-module.exports = AppError;
+  // Send email to queue
+  await sendToMailQueue({
+    to: email,
+    subject: 'Welcome!',
+    html: getTemplate(name)
+  });
+
+  res.status(201).json({ message: 'User registered, mail queued' });
+};
+
+const sendMultipleEmails = async (req, res) => {
+  try {
+    const result = await userService.queueEmailsForAllUsers();
+
+    if (result.length === 0) {
+      return Response.error(res, 'No users found to send emails', 404);
+    }
+
+    Response.getGeneralResponse(res, result, `${result.length} emails queued successfully`);
+  } catch (error) {
+    console.error('Error in sendMultipleEmails:', error);
+    Response.error(res, 'Failed to send emails', 500);
+  }
+};
+
+// const registerUser = async (req, res, next) => {
+//   try {
+//     await userService.sendWelcomeMailsToAllUsers();
+//     return Res.noContent(res);
+//   } catch (error) {
+//     next(error);
+//   }
+// };
+
+const scheduleEmails = async (req, res) => {
+  try {
+    const result = await userService.scheduleEmailsForUsers();
+
+    if (!result.length) {
+      return Response.error(res, 'No users found to schedule emails', 404);
+    }
+
+    Response.getGeneralResponse(res, result, `${result.length} emails scheduled successfully`);
+  } catch (error) {
+    console.error('Email scheduling error:', error);
+    Response.error(res, 'Email scheduling failed', 500);
+  }
+};
 
 
 module.exports = {
@@ -414,11 +470,13 @@ module.exports = {
   updateUser,
   deleteUser,
   bulkUpdateUsers,
+ sendMultipleEmails,
   getUsersByEmailLetter,
   getUsersWithMenus,
   fetchAllUsers,
   getmenu,
- 
+  registerUser,
   User,
+  scheduleEmails,
   login,
 };

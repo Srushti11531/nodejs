@@ -16,7 +16,7 @@
 
 
 // services/userService.js
-const productRepo = require('../Repository/productRepository');
+const productRepo = require('../repository/productRepository');
 
 const createproduct = async (data) => {
   return await productRepo.createproduct(data);
@@ -41,12 +41,25 @@ const getproductByEmailStart = async ({ search }) => {
 const filterproductByEmailIn = async ({ search }) => {
   return await productRepo.filterproductByEmailIn(search);
 };
-const getProducts = async (req) => {
-  return await productRepo.getProducts(req);
-};
+// const getProducts = async (req) => {
+//   return await productRepo.getProducts(req);
+// };
 const getProductsWithUsers = async ({ data }) => {
   return await productRepo.getProductsWithUsers(data);
 };
+
+
+
+const getProducts = async ({filter,sort,page}) => {
+  console.log(page)
+  return await productRepo.getProducts({filter,sort,page}); 
+};
+
+const getPaginatedProducts = async (paginationParams) => {
+  //const { limit = 10, offset = 0 } = paginationParams;
+  return await productRepo.findPaginatedProducts(paginationParams);
+};
+
 
 module.exports = {
   createproduct,
@@ -57,4 +70,5 @@ module.exports = {
   getproductByEmailStart,
   filterproductByEmailIn,
   getProducts,
+  getPaginatedProducts
 };

@@ -296,6 +296,19 @@ const filtermenuByletter = async (req) => {
 const findUserByEmail = async (email) => {
   return await User.findOne({ where: { email } });
 }; 
+//node mailer ke liye
+const findByEmail = async (email) => {
+  if (!email || typeof email !== "string") return null;
+
+  return await User.findOne({
+    where: { email: email.toLowerCase() }
+  });
+};
+
+
+const fetchAllUsers = async () => {
+  return await User.findAll(); // Adjust based on your DB ORM
+};
 
 
 module.exports = {
@@ -310,6 +323,7 @@ module.exports = {
   getUsersWithMenus,
   filtermenuByletter,
   getmenu,
-
- 
+  findUserByEmail,
+ findByEmail,
+ fetchAllUsers,
 };
