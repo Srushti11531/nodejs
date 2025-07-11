@@ -219,6 +219,8 @@ const Response=require('../utils/response')
 const AppError = require('../utils/error');
 const  {sendToMailQueue}  = require('../Service/mailservice');
 const  getTemplate  = require('../utils/mailtemplate');
+const  Users  = require('../models/user');
+
 const { sendToQueue } = require('../Service/queryservice');
 const validator = require('validator'); // For email validation
 
@@ -361,21 +363,39 @@ const upsertUser = async (req, res) => {
 
 };
 
-const login = async (req, res) => {
-   try {
-    const user = await userService.login(req.body);
-    Response.getGeneralResponse(res, user, "Users added successfully")
-    // res.status(201).json(user);
-    //     throw new AppError('User creation failed', 400, 'USER_CREATED');
 
+const login = async (req, res, next) => {
+  try {
+    console.log('controller login');
+    const userData = await userService.login(req.body); // Pass { email, password }
+
+    Response.getGeneralResponse(res, userData, "Login successful");
   } catch (error) {
-    // res.status(400).json({ error: error.message });
-    //     next(error);
-    console.log(error);
-    Response.error(res,"Fail")
+    console.error(error);
+    next(error)
 
+    // Customize error response based on AppError or default
+    // if (error instanceof AppError) {
+    //   return Response.error(res, error.message, error.statusCode);
+    // }
+
+    // return Response.error(res, "Fail", 500);
   }
+};
+const changePassword = async (req, res) => {
+  const { email, oldPassword, newPassword } = req.body;
 
+  const user = await Users.findOne({ where: { email } });
+  if (!user) return res.status(404).json({ error: 'User not found' });
+
+  const isMatch = await bcrypt.compare(oldPassword, user.password_hash);
+  if (!isMatch) return res.status(401).json({ error: 'Old password incorrect' });
+
+  const hash = await bcrypt.hash(newPassword, 10);
+  user.password_hash = hash;
+  await user.save();
+
+  res.json({ message: 'Password changed successfully' });
 };
 const User = async (req, res) => {
   try {
@@ -479,4 +499,5 @@ module.exports = {
   User,
   scheduleEmails,
   login,
+  changePassword,
 };

@@ -1,13 +1,29 @@
-const AppError = require('../utils/error');
+const { AppError, ApiError } = require('../utils/error');
 
 function errorHandler(err, req, res, next) {
-  if (err instanceof AppError) {
+  if (err instanceof ApiError) {
+    console.log(err)
     return res.status(err.statusCode).json({
-      status: 'error',
-      message: err.message,
-      errorCode: err.errorCode,
+      data: null,
+      status: {
+        status:'error',
+        descrption: err.message,
+        code: err.errorCode
+      },
     });
   }
+
+  //  if (err instanceof AppError) {
+  //   console.log(err)
+  //   return res.status(err.statusCode).json({
+  //     data: null,
+  //     status: {
+  //       status:'error',
+  //       descrption: err.message,
+  //       code: err.errorCode
+  //     },
+  //   });
+  // }
 
   console.error('Unexpected error:', err);
   return res.status(500).json({

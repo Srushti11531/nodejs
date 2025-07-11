@@ -64,6 +64,18 @@ const User = db.define('users', {
         type: DataTypes.STRING,
          allowNull: false
          },
+loginAttempts: 
+{ 
+    type: DataTypes.INTEGER,
+     defaultValue: 0
+     },
+    blockedAt:
+     {
+         type: DataTypes.DATE, 
+         allowNull: true
+         },
+
+
 
     gender:
     {

@@ -10,11 +10,11 @@ class Status {
         return new Status(description, 'OK', 'Success');
     }
 
-    static getGeneralResponse(res, data, description = 'Request successful') {
-        res.status(201).json({ data, status: this.success(description) });
+    static getGeneralResponse(res, description = 'Request successful') {
+        res.status(201).json({  status: this.success(description) });
     }
 
-    static error(res,data,description = 'Something went wrong') {
+    static error(res,description = 'Something went wrong') {
        res.status(400).json({ Status:this.notFound(description)});
     }
 

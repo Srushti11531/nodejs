@@ -84,10 +84,13 @@ const getUserById = async (id) => {
 const updateUser = async (id, data) => {
  
 
-      return await User.findByPk(id);
+ const [updated] = await User.update(data, {
+    where: { id, softdelete: false },
+    returning: true,
+  });
+  return updated;
       
 };
-  
 
 
 
@@ -116,27 +119,39 @@ const softDeleteUser = async (id) => {
   return deleted;
 };
 
-const filterUsersByEmail = async (email, ids ) => {
-  try {
-    console.log(email);
-    const where = {};
+// const filterUsersByEmail = async (email, ids ) => {
+//   try {
+//     console.log(email);
+//     const where = {};
 
-    if (email) {
-      where.email = { [Op.iLike]: `%${email}%` };
+//     if (email) {
+//       where.email = { [Op.iLike]: `%${email}%` };
+//     }
+
+//     if (ids?.length > 0) {
+//       where.id = { [Op.in]: ids };
+//     }
+
+//     const users = await User.findAll({ where });
+//     return users;
+
+//   } catch (err) {
+//     console.error('Error in filterUsers:', err);
+//     throw err;
+//   }
+// };
+const filterUsersByEmail= async (email) => {
+    try {
+      const users = await User.findAll({
+        where: { email },
+      });
+      return users;
+    } catch (error) {
+      console.error('Error filtering users by email:', error);
+      throw error;
     }
-
-    if (ids?.length > 0) {
-      where.id = { [Op.in]: ids };
-    }
-
-    const users = await User.findAll({ where });
-    return users;
-
-  } catch (err) {
-    console.error('Error in filterUsers:', err);
-    throw err;
   }
-};
+
 
 //multiple menu
 

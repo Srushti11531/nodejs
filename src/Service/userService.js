@@ -22,12 +22,40 @@ const bcrypt = require('bcrypt');
 const Users = require('../models/user');
 const  {sendToMailQueue}  = require('../Service/mailservice');
 const jwt = require('jsonwebtoken');
+const MessageConstant = require("../constants/MessageConstant");
 const  getTemplate  = require('../utils/mailtemplate');
 const { enqueueEmailJob } = require('../query/mailquery');
 const { sendWelcomeEmail } = require('./mailservice');
 const { error } = require('../utils/response');
-const { BadRequestException } = require('../utils/error');
+//const { BadRequestException } = require('../utils/error');
+const { AppError, BadRequestException } = require('../utils/error');
+const { StatusCodes, getReasonPhrase } = require('http-status-codes'); //  correct
+const schedule = require('node-schedule');
 
+
+
+
+const scheduleUserUnblock = (user) => {
+  if (!user || !user.blockedAt) return;
+
+  // Use a unique job key based on user ID
+  const jobKey = `unblock_${user.id}`;
+
+  schedule.scheduleJob(jobKey, user.blockedAt, async () => {
+    try {
+      await userRepo.updateUser(user.id, {
+        loginAttempts: 0,
+        blockedAt: null,
+      });
+
+      console.log(` User "${user.name}" (${user.email}) has been automatically unblocked.`);
+    } catch (error) {
+      console.error(` Failed to unblock user "${user.name}" (${user.email}):`, error);
+    }
+  });
+
+  console.log(` Unblock job scheduled for "${user.name}" (${user.email}) at ${user.blockedAt}`);
+};
 
 const upsertUser = async (req) => {
   return await userRepo.upsertUser(req);
@@ -100,47 +128,211 @@ const getmenu = async (req) => {
 };
 
 
-const login = async (req) => {
-  try {
-    const { email, password } = req;
+// const login = async (req) => {
+//   try {
+//     const { email, password } = req;
 
-    if (!email || !password) {
-      console.log('Missing credentials:', { email, password });
-      return { error: 'Email and password are required' };
+//     if (!email || !password) {
+//       console.log('Missing credentials:', { email, password });
+//       return { error: 'Email and password are required' };
+//     }
+
+//     const users = await userRepo.filterUsersByEmail(email);
+//     const user = users && users[0];
+
+//     if (!user || !user.password) {
+//       return { error: 'Invalid email or password' };
+//     }
+
+//     const userPassword = user?.dataValues?.password || user?.password;
+//     const isValid = await passwordUtils.isValidPassword(password, userPassword);
+
+//     if (!isValid) {
+//       return { error: 'Invalid email or password' };
+//     }
+
+//     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
+//       expiresIn: process.env.JWT_REFRESH_EXPIRATION || '1d',
+//     });
+
+//     return {
+//       id: user.id,
+//       name: user.name,
+//       email: user.email,
+//       accessToken: token,
+//     };
+
+//   } catch (error) {
+//     console.error('Login error:', error);
+//     return { error: 'Login failed due to server error' };
+//   }
+// };
+
+//extra
+
+// const LOCK_TIME = 1 * 60 * 1000;
+// const MAX_ATTEMPTS = 5;
+// const JWT_SECRET = 'your_jwt_secret_here';
+// const loginLogs = [];
+
+// const login = async ({ email, password }) => {
+//   if (!email || !password) {
+//     throw new BadRequestException(MessageConstant.USER.ALL_FIELDS_REQUIRED);
+//   }
+
+//   const user = await userRepo.findUserByEmail(email);
+//   if (!user) {
+//     throw new BadRequestException(MessageConstant.USER.INVALID_EMAIL_OR_PASSWORD);
+//   }
+
+//   const now = new Date();
+
+//   if (user.blockedAt && user.blockedAt > now) {
+//     const remainingMin = Math.ceil((user.blockedAt - now) / 60000);
+//     throw new BadRequestException(
+//      ` ${MessageConstant.USER.BLOCKED} Try again in ${remainingMin} minute(s).
+//     `);
+//   }
+
+//   const isValidPassword = await bcrypt.compare(password, user.password);
+//   if (!isValidPassword) {
+//     user.loginAttempts = (user.loginAttempts || 0) + 1;
+
+//     if (user.loginAttempts >= MAX_ATTEMPTS) {
+//       user.blockedAt = new Date(Date.now() + LOCK_TIME);
+//       console.log(`User ${user.email} is now blocked until ${user.blockedAt}`);
+
+//       //  Schedule unblock job
+//       schedule.scheduleJob(user.blockedAt, async () => {
+//         user.loginAttempts = 0;
+//         user.blockedAt = null;
+//         await user.save();
+//         console.log(` User ${user.email} has been automatically unblocked`);
+//       });
+//     }
+
+//     await user.save();
+//     throw new BadRequestException(
+//      ` ${MessageConstant.USER.INVALID_CREDENTIALS} (${user.loginAttempts}/${MAX_ATTEMPTS})
+//     `);
+//   }
+
+//   //  Login success
+//   user.loginAttempts = 0;
+//   user.blockedAt = null;
+//   await user.save();
+
+//   const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '1h' });
+
+//   const loginLog =` ${StatusCodes.OK} - ${getReasonPhrase(StatusCodes.OK)}: Login successful for ${user.email}`;
+//   loginLogs.push(loginLog);
+//   console.log(loginLog);
+
+//   return {
+//     id: user.id,
+//     name: user.name,
+//     email: user.email,
+//     token,
+//   };
+// };
+
+
+const LOCK_TIME = 1 * 60 * 1000; // 1 minute
+const MAX_ATTEMPTS = 5;
+const JWT_SECRET = 'your_jwt_secret_here';
+const loginLogs = [];
+
+const login = async ({ email, password }) => {
+  if (!email || !password) {
+    const missingFields = [email, password].filter((field) => !field).length;
+    throw new BadRequestException(
+      MessageConstant.USER.REQUIRED_FIELDS_MESSAGE(missingFields)
+    );
+  }
+
+  const user = await userRepo.findUserByEmail(email);
+  if (!user) {
+    throw new BadRequestException(
+      MessageConstant.USER.EMAIL_OR_PASSWORD()
+    );
+  }
+
+  const now = new Date();
+
+  // Still blocked
+  if (user.blockedAt) {
+    const blockDate = new Date(user.blockedAt.getTime() + LOCK_TIME);
+
+    if (now < blockDate) {
+      const remainingMin = Math.ceil((blockDate - now) / 60000);
+      throw new BadRequestException(
+        MessageConstant.USER.BLOCKED_MESSAGE(remainingMin)
+      );
+    } else {
+      // Auto-unblock if time expired
+      user.blockedAt = null;
+      user.loginAttempts = 0;
+      await userRepo.updateUser(user.id, {
+        blockedAt: null,
+        loginAttempts: 0,
+      });
+      console.log(`Auto-unblocked ${user.email} after block time.`);
+    }
+  }
+
+  // Password validation
+  const isValidPassword = await bcrypt.compare(password, user.password);
+  if (!isValidPassword) {
+    const attempts = (user.loginAttempts || 0) + 1;
+    let blockedAt = user.blockedAt;
+
+    if (attempts >= MAX_ATTEMPTS) {
+      blockedAt = new Date();
+      console.log(
+        `User ${user.email} is now blocked until ${new Date(
+          blockedAt.getTime() + LOCK_TIME
+        ).toLocaleTimeString()}`
+      );
+
+      // Schedule auto-unblock
+      scheduleUserUnblock(user, new Date(blockedAt.getTime() + LOCK_TIME));
     }
 
-    const users = await userRepo.filterUsersByEmail(email);
-    const user = users && users[0];
-
-    if (!user || !user.password) {
-      return { error: 'Invalid email or password' };
-    }
-
-    const userPassword = user?.dataValues?.password || user?.password;
-    const isValid = await passwordUtils.isValidPassword(password, userPassword);
-
-    if (!isValid) {
-      return { error: 'Invalid email or password' };
-    }
-
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_REFRESH_EXPIRATION || '1d',
+    await userRepo.updateUser(user.id, {
+      loginAttempts: attempts,
+      blockedAt: blockedAt,
     });
 
-    return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      accessToken: token,
-    };
-
-  } catch (error) {
-    console.error('Login error:', error);
-    return { error: 'Login failed due to server error' };
+    throw new BadRequestException(
+      `${MessageConstant.USER.EMAIL_OR_PASSWORD()} (${attempts}/${MAX_ATTEMPTS})`
+    );
   }
+
+  // Successful login
+  await userRepo.updateUser(user.id, {
+    loginAttempts: 0,
+    blockedAt: null,
+  });
+
+  const token = jwt.sign(
+    { id: user.id, email: user.email },
+    JWT_SECRET,
+    { expiresIn: '1h' }
+  );
+
+  const loginLog = `${StatusCodes.OK} - ${getReasonPhrase(
+    StatusCodes.OK
+  )}: Login successful for ${user.email}`;
+  loginLogs.push(loginLog);
+  console.log(loginLog);
+
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    token,
+  };
 };
-
-
 
 const fetchAllUsers = async () => {
   try {
@@ -218,6 +410,7 @@ const scheduleEmailsForUsers = async () => {
 
 module.exports = {
   upsertUser,
+  scheduleUserUnblock,
   createUser,
   getUserById,
   filterUsersByEmailIn,

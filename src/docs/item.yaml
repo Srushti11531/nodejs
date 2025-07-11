@@ -324,4 +324,62 @@ paths:
         '400':
           description: Bad Request
         '500':
-          description: Failed to write Excel
+          description: Failed to write Excel       
+/users/login:
+  post:
+    summary: User login with block tracking
+    tags: 
+      - Users
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - email
+              - password
+            properties:
+              email:
+                type: string
+                example: shree@gmail.com
+              password:
+                type: string
+                example: shree
+    responses:
+      '200':
+        description: Login successful
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                user:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      example: 101
+                    name:
+                      type: string
+                      example: shree
+                    email:
+                      type: string
+                      example: shree@gmail.com
+                    isBlocked:
+                      type: boolean
+                      example: false
+                    failedAttempts:
+                      type: integer
+                      example: 0
+                    blockedAt:
+                      type: string
+                      format: date-time
+                      nullable: true
+                    blockCount:
+                      type: integer
+                      example: 2
+      '400':
+        description: Invalid credentials or blocked account

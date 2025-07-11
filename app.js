@@ -93,7 +93,7 @@ const  startConsumer  = require('./src/consumers/emailconsumer').startConsumer;
 const errorHandler = require('./src/middleware/errorHandler');
 
 //require('./src/shedules/loggershedules'); 
-require('./src/shedules/date'); 
+//require('./src/shedules/date'); 
 
 // Express app init
 const app = express();
@@ -126,6 +126,7 @@ app.use('/api/users', userRoutes);
 app.use('/api', exampleRoutes);
 app.use('/api/pdf', pdfRoutes);
 
+
 // Error handler (keep this last)
 app.use(errorHandler);
 
@@ -134,7 +135,11 @@ app.use(errorHandler);
 const startApp = async () => {
   await connectQueue();
   startConsumer();
-
+app.use((err, req, res, next) => {
+  const status = err.statusCode || 500;
+  const message = err.message || 'Internal server error';
+  res.status(status).json({ error: message });
+});
     // Start Express server
     app.listen(PORT, () => {
       console.log(` Server running at http://localhost:${PORT}`);
