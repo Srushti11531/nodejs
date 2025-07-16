@@ -220,6 +220,8 @@ const AppError = require('../utils/error');
 const  {sendToMailQueue}  = require('../Service/mailservice');
 const  getTemplate  = require('../utils/mailtemplate');
 const  Users  = require('../models/user');
+const axios = require('axios');
+
 
 const { sendToQueue } = require('../Service/queryservice');
 const validator = require('validator'); // For email validation
@@ -481,7 +483,82 @@ const scheduleEmails = async (req, res) => {
     Response.error(res, 'Email scheduling failed', 500);
   }
 };
+// const getThirdPartyUsers = async (req, res) => {
+//   try {
+//     const users = await userService.getThirdPartyUsers();
+//     Response.getGeneralResponse(res, users, "Fetched third-party users");
+//   } catch (err) {
+//     console.error('Failed to fetch external users:', err);
+//     Response.error(res, "External fetch failed", 500);
+//   }
+// };
+const getThirdPartyUsers = async (req, res) => {
+  try {
+    const apiUrl = 'https://jsonplaceholder.typicode.com/posts';
+    const { data } = await axios.get(apiUrl);
 
+    //  This is wrapping the response:
+    // Response.getGeneralResponse(res, data, "Third-party user data fetched successfully");
+
+    //  Instead use this:
+    res.status(200).json(data); //  Returns plain array as desired
+  } catch (error) {
+    console.error('Error fetching third-party users:', error.message);
+    res.status(500).json({ error: 'Failed to fetch third-party users' });
+  }
+};
+
+
+const createThirdPartyUser = async (req, res) => {
+  try {
+    // You can use req.body.id or filter if needed
+    const response = await axios.post('https://jsonplaceholder.typicode.com/posts', {
+      title: 'foo',
+      body: 'bar',
+      userId: 1
+    });
+
+    const data = response.data;
+
+    //  Return the third-party API's response directly
+    return res.status(200).json(data);
+  } catch (error) {
+    console.error('Error posting to third-party API:', error.message);
+    return res.status(500).json({ error: 'Failed to fetch third-party data' });
+  }
+};
+const updateThirdPartyUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updatedData = req.body;
+
+    const response = await axios.put(`https://jsonplaceholder.typicode.com/posts/${id}`, updatedData);
+
+    res.status(200).json(response.data);
+  } catch (error) {
+    console.error('Update Error:', error.message);
+    res.status(500).json({
+      status: "error",
+      message: "Failed to update user in third-party API"
+    });
+  }
+};
+
+const deleteThirdPartyUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const response = await axios.delete(`https://jsonplaceholder.typicode.com/posts/${id}`);
+
+    return res.status(200).json({
+      message: `Post with ID ${id} deleted successfully (simulated).`,
+      status: response.status
+    });
+  } catch (error) {
+    console.error('Error deleting third-party user:', error.message);
+    return res.status(500).json({ error: 'Failed to delete third-party data' });
+  }
+};
 
 module.exports = {
   upsertUser,
@@ -500,4 +577,8 @@ module.exports = {
   scheduleEmails,
   login,
   changePassword,
+  createThirdPartyUser,
+  getThirdPartyUsers,
+  updateThirdPartyUser,
+  deleteThirdPartyUser,
 };

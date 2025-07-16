@@ -36,6 +36,14 @@ router.post('/page',userController.getmenu)
 
 router.post('/login', userController.login);
 
+
+//thirdparty api
+router.get('/external/users', userController.getThirdPartyUsers);
+router.post('/external/users', userController.createThirdPartyUser);
+router.put('/external/users/:id', userController.updateThirdPartyUser);
+router.delete('/external/users/:id', userController.deleteThirdPartyUser);
+
+
 // Create a new user
 // router.post('/users', userController.createUser);
 

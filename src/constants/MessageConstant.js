@@ -63,7 +63,7 @@ class MessageConstant {
     BLOCKED_MESSAGE: (remainingMin = '') =>
       `${MessageConstant.USER.BLOCKED} Try again in ${remainingMin} minute(s).`,
 
-    EMAIL_OR_PASSWORD: (remainingMin = 'or') =>
+    EMAIL_OR_PASSWORD: (remainingMin = '') =>
     `${MessageConstant.USER.INVALID_EMAIL_OR_PASSWORD}  ${remainingMin} email`,
   
 
